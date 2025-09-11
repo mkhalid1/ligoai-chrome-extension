@@ -100,7 +100,7 @@ function main() {
     try {
       const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'))
       const version = packageJson.version
-      const zipCommand = `cd build && zip -r chrome-mv3-prod-v${version}.zip chrome-mv3-production/`
+      const zipCommand = `cd build && zip -r chrome-mv3-prod-v${version}.zip chrome-mv3-prod/`
       execSync(zipCommand, { stdio: 'inherit' })
       console.log(`✅ Created chrome-mv3-prod-v${version}.zip`)
     } catch (error) {
