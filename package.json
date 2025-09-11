@@ -52,8 +52,17 @@
       "https://*.linkedin.com/*",
       "https://*.ertiqah.com/*",
       "https://x.com/*",
+      "https://twitter.com/*",
       "https://*.reddit.com/*",
-      "https://*.facebook.com/*"
+      "https://reddit.com/*",
+      "https://*.facebook.com/*",
+      "https://facebook.com/*",
+      "http://localhost:*/*",
+      "https://*.medium.com/*",
+      "https://medium.com/*",
+      "https://*.substack.com/*",
+      "https://*.youtube.com/*",
+      "https://youtube.com/*"
     ],
     "externally_connectable": {
       "matches": [
@@ -73,10 +82,13 @@
         "matches": [
           "https://*.linkedin.com/*",
           "https://x.com/*",
+          "https://twitter.com/*",
           "https://*.reddit.com/*",
+          "https://reddit.com/*",
           "https://*.facebook.com/*",
+          "https://facebook.com/*",
           "https://*.ertiqah.com/*",
-          "http://localhost:3000/*",
+          "http://localhost:*/*",
           "https://*.medium.com/*",
           "https://medium.com/*",
           "https://*.substack.com/*",

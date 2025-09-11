@@ -195,6 +195,11 @@ class LiGoContentExtractor {
     return null
   }
 
+  isRedditIndividualPostPage() {
+    // Individual Reddit post URLs follow pattern: /r/subreddit/comments/postid/title/
+    return window.location.pathname.includes('/comments/')
+  }
+
   canExtractContent() {
     switch (this.currentSite) {
       case 'medium':
@@ -233,9 +238,12 @@ class LiGoContentExtractor {
       <img class="ligo-extraction-fab-icon" src="${chrome.runtime.getURL('assets/48x48.png')}" alt="LiGo">
     `
     
-    // Create hover menu
+    // Create hover menu with conditional Reddit comments option
     const menu = document.createElement('div')
     menu.className = 'ligo-extraction-menu'
+    
+    const isRedditPostPage = this.currentSite === 'reddit' && this.isRedditIndividualPostPage()
+    
     menu.innerHTML = `
       <button class="ligo-menu-item" data-action="generate-post">
         <svg class="ligo-menu-item-icon" viewBox="0 0 24 24" fill="none">
@@ -243,6 +251,14 @@ class LiGoContentExtractor {
         </svg>
         Generate Post
       </button>
+      ${isRedditPostPage ? `
+      <button class="ligo-menu-item" data-action="generate-comments">
+        <svg class="ligo-menu-item-icon" viewBox="0 0 24 24" fill="none">
+          <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h11c.55 0 1-.45 1-1z" fill="currentColor"/>
+        </svg>
+        Generate Comments
+      </button>
+      ` : ''}
       <button class="ligo-menu-item" data-action="save-inspiration">
         <svg class="ligo-menu-item-icon" viewBox="0 0 24 24" fill="none">
           <path d="M12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27Z" fill="currentColor"/>
@@ -290,6 +306,9 @@ class LiGoContentExtractor {
               break
             case 'generate-post':
               this.handleGeneratePost()
+              break
+            case 'generate-comments':
+              this.handleGenerateComments()
               break
             case 'save-inspiration':
               this.handleSaveInspiration()
@@ -393,6 +412,42 @@ class LiGoContentExtractor {
 
     try {
       await this.handleExtraction()
+    } finally {
+      if (menuItem) {
+        menuItem.classList.remove('loading')
+      }
+    }
+  }
+
+  async handleGenerateComments() {
+    const menuItem = this.menu?.querySelector('[data-action="generate-comments"]') as HTMLElement
+    if (menuItem) {
+      menuItem.classList.add('loading')
+    }
+
+    try {
+      // Extract Reddit post content for comment generation
+      const extractedData = await this.extractContent()
+      
+      if (extractedData) {
+        // Open sidebar and send content for comment generation (not post generation)
+        chrome.runtime.sendMessage({ action: 'openSidePanel' })
+        
+        // Send content to sidebar after a delay to ensure it's ready
+        setTimeout(() => {
+          chrome.runtime.sendMessage({
+            action: 'pasteToTextarea',
+            text: extractedData.content,
+            shouldGenerateComments: true // Auto-generate comments
+          })
+        }, 1000)
+        
+        console.log('Reddit content sent for comment generation')
+      } else {
+        console.error('Could not extract Reddit content for comment generation')
+      }
+    } catch (error) {
+      console.error('Error generating comments:', error)
     } finally {
       if (menuItem) {
         menuItem.classList.remove('loading')
