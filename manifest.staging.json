@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7zsxL2UWRi+yo03mQOlJ0xwVmLs6A1kMFgCl0OLYH+8QthmYc+FnsrFmvSmrYE39E6xDjNC1xiL/71wA9wFggAEGzdo49idZGV2gBib+19fUru3pltJkWyonsrrQCG5lZw1nVLguokNufJiNvV8h+fgUV8TE8urMCl39StMjj0nbZlwdw5FzqelRBekFiLIA2IXklp0t/QEtfrfwKsluQcrYspBvWhcxdYCFmKv0UERlHg10+idgINDf6mSro/J94hlzBHIYq60KZI9uDrHYNkKKBHa+ySKUS3AizMJDaS154gESeHFv+w6Uirpt4u9BOyPuejvw3YFcPjwgIIpJ0QIDAQAB",
+  "name": "LiGoAI (Staging)",
+  "version": "2.0.1",
+  "description": "Engage on LinkedIn and X with personalized comments and replies - Staging Build",
+  "permissions": ["storage", "sidePanel", "clipboardWrite", "activeTab", "scripting", "contextMenus"],
+  "action": {
+    "default_title": "LiGo - Open Sidepanel (Staging)"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html",
+    "default_width": 481,
+    "min_width": 320,
+    "max_width": 550
+  },
+  "host_permissions": [
+    "https://*.linkedin.com/*",
+    "https://*.ertiqah.com/*",
+    "https://*.medium.com/*",
+    "https://medium.com/*",
+    "https://*.substack.com/*",
+    "https://*.reddit.com/*",
+    "https://reddit.com/*",
+    "https://*.youtube.com/*",
+    "https://youtube.com/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://stage-ligo.ertiqah.com/*",
+      "https://*.ertiqah.com/*"
+    ]
+  },
+  "background": {
+    "service_worker": "background.ts",
+    "type": "module"
+  },
+  "icons": {
+    "16": "assets/48x48.png",
+    "32": "assets/48x48.png", 
+    "48": "assets/48x48.png",
+    "64": "assets/64x64.png",
+    "128": "assets/128x128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/48x48.png", "assets/64x64.png", "assets/128x128.png", "assets/icon.png"],
+      "matches": ["https://*.linkedin.com/*", "https://x.com/*", "https://*.reddit.com/*", "https://*.facebook.com/*", "https://*.ertiqah.com/*", "https://*.medium.com/*", "https://medium.com/*", "https://*.substack.com/*", "https://*.youtube.com/*", "https://youtube.com/*"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; script-src 'self'; object-src 'none'; frame-ancestors 'none'; connect-src https://*.ertiqah.com https://*.linkedin.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'"
+  }
+}

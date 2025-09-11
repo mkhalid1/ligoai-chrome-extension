@@ -1,0 +1,89 @@
+{
+  "name": "ligo-extension-modern",
+  "displayName": "LiGoAI",
+  "version": "2.0.6",
+  "description": "Engage on LinkedIn and X with personalized comments and replies",
+  "author": "LiGo",
+  "type": "module",
+  "scripts": {
+    "dev": "PLASMO_ENV=development plasmo dev --src-path=.",
+    "build": "node scripts/build.js",
+    "build:dev": "node scripts/build.js development",
+    "build:staging": "node scripts/build.js staging", 
+    "build:prod": "node scripts/build.js production",
+    "build:all": "node scripts/build.js",
+    "clean": "rm -rf build/",
+    "version:patch": "npm version patch && npm run sync-version",
+    "version:minor": "npm version minor && npm run sync-version", 
+    "version:major": "npm version major && npm run sync-version",
+    "sync-version": "node scripts/sync-version.js",
+    "package": "npm run package:prod",
+    "package:prod": "cd build && zip -r chrome-mv3-prod-v$(node -p \"require('../package.json').version\").zip chrome-mv3-prod/",
+    "package:dev": "cd build && zip -r chrome-mv3-dev-v$(node -p \"require('../package.json').version\").zip chrome-mv3-dev/",
+    "package:staging": "cd build && zip -r chrome-mv3-staging-v$(node -p \"require('../package.json').version\").zip chrome-mv3-staging/",
+    "package:all": "npm run package:dev && npm run package:staging && npm run package:prod"
+  },
+  "dependencies": {
+    "@plasmohq/storage": "^1.9.0",
+    "clsx": "^1.2.1",
+    "lucide-react": "^0.263.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.251",
+    "autoprefixer": "^10.4.16",
+    "plasmo": "^0.90.5",
+    "prettier": "3.1.1",
+    "tailwindcss": "3.4.0"
+  },
+  "manifest": {
+    "permissions": [
+      "storage",
+      "sidePanel",
+      "clipboardWrite",
+      "activeTab",
+      "scripting",
+      "contextMenus"
+    ],
+    "host_permissions": [
+      "https://*.linkedin.com/*",
+      "https://*.ertiqah.com/*",
+      "https://x.com/*",
+      "https://*.reddit.com/*",
+      "https://*.facebook.com/*"
+    ],
+    "externally_connectable": {
+      "matches": [
+        "https://ligo.ertiqah.com/*",
+        "https://*.ertiqah.com/*",
+        "http://localhost:3000/*"
+      ]
+    },
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/48x48.png",
+          "assets/icon.png",
+          "assets/64x64.png",
+          "assets/128x128.png"
+        ],
+        "matches": [
+          "https://*.linkedin.com/*",
+          "https://x.com/*",
+          "https://*.reddit.com/*",
+          "https://*.facebook.com/*",
+          "https://*.ertiqah.com/*",
+          "http://localhost:3000/*",
+          "https://*.medium.com/*",
+          "https://medium.com/*",
+          "https://*.substack.com/*",
+          "https://*.youtube.com/*",
+          "https://youtube.com/*"
+        ]
+      }
+    ]
+  }
+}
