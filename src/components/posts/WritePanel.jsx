@@ -67,7 +67,7 @@ const WritePanel = ({ activeTab }) => {
     if (currentStep === 2 && !currentInputContent && originalContent) {
       setCurrentInputContent(originalContent)
     }
-  }, [currentStep, originalContent, currentInputContent])
+  }, [currentStep, originalContent]) // Removed currentInputContent from dependency array
 
   // Auto-apply extracted content when available
   useEffect(() => {

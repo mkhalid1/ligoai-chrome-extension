@@ -235,17 +235,14 @@ class FacebookEngagement {
         // Get user settings for auto-generation
         const shouldAutoGenerate = await this.shouldAutoGenerateComments()
         
-        // Open sidebar and send content - let AuthGate handle authentication
-        chrome.runtime.sendMessage({ action: 'openSidePanel' })
-        
-        // Send content to sidebar after a delay to ensure sidebar is ready
-        setTimeout(() => {
-          chrome.runtime.sendMessage({
-            action: 'pasteToTextarea',
-            text: postContent,
-            shouldGenerateComments: shouldAutoGenerate
-          })
-        }, 1000)
+        // Open panel via handshake and deliver content once ready
+        const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+        chrome.runtime.sendMessage({
+          type: 'OPEN_PANEL',
+          intent: 'comments',
+          requestId,
+          payload: { text: postContent, shouldGenerateComments: shouldAutoGenerate }
+        })
         
         // Success feedback
         button.lastChild.textContent = 'Sent!'

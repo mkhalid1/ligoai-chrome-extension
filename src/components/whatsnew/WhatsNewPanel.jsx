@@ -4,10 +4,7 @@ import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { useAuth } from '../../hooks/useAuth'
 import { 
-  Sparkles, 
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   Plus,
   ThumbsUp,
   ThumbsDown,
@@ -18,53 +15,21 @@ import {
   Users,
   Send,
   X,
-  Bug,
-  Archive
+  Archive,
+  FileText
 } from 'lucide-react'
 
 const WhatsNewPanel = ({ activeTab }) => {
   const { authenticatedFetch, API_URL } = useAuth()
   
   // State management
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [activeSection, setActiveSection] = useState('delivered') // 'delivered', 'roadmap', 'requests'
+  const [activeSection, setActiveSection] = useState('roadmap') // 'roadmap', 'requests', 'changelog'
   const [featureRequests, setFeatureRequests] = useState([])
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestForm, setRequestForm] = useState({ title: '', description: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingRequests, setIsLoadingRequests] = useState(false)
 
-  // Recently delivered features (real ones!)
-  const deliveredFeatures = [
-    {
-      id: 1,
-      title: "Bulk Reply to Comments on Your Own Post",
-      description: "Quickly respond to multiple comments on your LinkedIn posts with AI-generated replies that match your voice and context.",
-      type: "feature",
-      status: "delivered"
-    },
-    {
-      id: 2,
-      title: "Faster Comment Generation",
-      description: "Comment generation is now 60% faster with improved AI processing and optimized response times.",
-      type: "improvement", 
-      status: "delivered"
-    },
-    {
-      id: 3,
-      title: "Medium Integration for Content Repurposing",
-      description: "Seamlessly repurpose your Medium articles into LinkedIn posts with automatic formatting and optimization.",
-      type: "feature",
-      status: "delivered"
-    },
-    {
-      id: 4,
-      title: "Reddit Integration for Content Repurposing",
-      description: "Transform popular Reddit discussions into engaging LinkedIn content while maintaining professional tone.",
-      type: "feature",
-      status: "delivered"
-    }
-  ]
 
   // Upcoming features
   const roadmapItems = [
@@ -151,8 +116,8 @@ const WhatsNewPanel = ({ activeTab }) => {
     }
   }
 
-  const openBugReport = () => {
-    chrome.tabs.create({ url: 'https://ligo.ertiqah.com/report-bug' })
+  const openChangelog = () => {
+    chrome.tabs.create({ url: 'https://intercom.help/ligo-for-linkedin/en/articles/12371337-private-extension-change-log' })
   }
 
   const getTypeColor = (type) => {
@@ -206,29 +171,20 @@ const WhatsNewPanel = ({ activeTab }) => {
           </div>
         </div>
         
-        {/* Subtle Bug Report Button */}
+        {/* Changelog Link */}
         <Button
-          onClick={openBugReport}
+          onClick={openChangelog}
           variant="ghost"
           size="sm"
-          className="text-muted-foreground hover:text-foreground gap-2"
+          className="text-muted-foreground hover:text-foreground gap-1 h-auto p-1"
         >
-          <Bug className="h-4 w-4" />
-          <span className="text-xs">Report Bug</span>
+          <FileText className="h-3 w-3" />
+          View Changelog
         </Button>
       </div>
 
       {/* Section Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
-        <Button
-          onClick={() => setActiveSection('delivered')}
-          variant={activeSection === 'delivered' ? 'default' : 'ghost'}
-          size="sm"
-          className="flex-1"
-        >
-          <CheckCircle className="h-4 w-4 mr-2" />
-          What's New
-        </Button>
         <Button
           onClick={() => setActiveSection('roadmap')}
           variant={activeSection === 'roadmap' ? 'default' : 'ghost'}
@@ -249,30 +205,6 @@ const WhatsNewPanel = ({ activeTab }) => {
         </Button>
       </div>
 
-      {/* Recently Delivered Features */}
-      {activeSection === 'delivered' && (
-        <div className="space-y-4">
-          {deliveredFeatures.map((item) => (
-            <Card key={item.id} className="p-4">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getTypeColor(item.type)}`}>
-                    {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-                  </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
-                    ✓ {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                  </span>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* Roadmap Section */}
       {activeSection === 'roadmap' && (
@@ -475,6 +407,14 @@ const WhatsNewPanel = ({ activeTab }) => {
           )}
         </div>
       )}
+
+      {/* Footer */}
+      <div className="pt-4 border-t border-border text-center">
+        <p className="text-xs text-muted-foreground">
+          Found a bug? Email us at{' '}
+          <span className="font-medium text-foreground">ligo@ertiqah.org</span>
+        </p>
+      </div>
     </div>
   )
 }

@@ -61,6 +61,71 @@ const SidebarLayout = ({ children }) => {
   useEffect(() => {
     const handleMessage = (request) => {
       console.log('📨 SidebarLayout received message:', request)
+      if (request.action === 'PANEL_DELIVER') {
+        // Route by intent and acknowledge to stop retries
+        const intent = request.intent
+        if (intent === 'comments') {
+          setActiveTab('comments')
+          // Forward payload to EngagePanel for legacy processing
+          if (request.payload && request.payload.text) {
+            try {
+              chrome.runtime.sendMessage({
+                action: 'pasteToTextarea',
+                text: request.payload.text,
+                shouldGenerateComments: !!request.payload.shouldGenerateComments
+              })
+            } catch (_) {}
+          }
+        } else if (intent === 'bulk-replies') {
+          setActiveTab('bulk-replies')
+          try { window.postMessage({ type: 'LiGo_ShowBulkReplyAnalysis' }, '*') } catch (e) {}
+          if (request.payload && request.payload.data) {
+            try { chrome.runtime.sendMessage({ action: 'showBulkReplyAnalysis', data: request.payload.data }) } catch (_) {}
+          }
+        } else if (intent === 'write') {
+          setActiveTab('write')
+          // Optional: set extracted content into storage for WritePanel to pick up
+          if (request.payload && request.payload.extractedData) {
+            try {
+              const extractedData = request.payload.extractedData
+              chrome.storage.local.set({
+                'extractedContent': extractedData,
+                'extractedContentTimestamp': Date.now(),
+                'navigateToWrite': true,
+                'navigateToWriteTimestamp': Date.now(),
+                ...(extractedData.isVideo ? { 'navigateToVideo': true } : {})
+              })
+              chrome.runtime.sendMessage({ action: 'navigateToWriteFromExtraction' })
+            } catch (_) {}
+          }
+        } else if (intent === 'crm') {
+          console.log('🏢 SidebarLayout switching to CRM tab with payload:', request.payload)
+          setActiveTab('crm')
+          if (request.payload && request.payload.profileData) {
+            console.log('📤 SidebarLayout storing profileData for CRM panel')
+            // Store the profile data globally for the CRM panel to pick up
+            window.pendingProspectData = request.payload.profileData
+            // Send message after a small delay to ensure CRM panel is mounted
+            setTimeout(() => {
+              try { 
+                chrome.runtime.sendMessage({ action: 'addProspectToSidebar', profileData: request.payload.profileData, switchToCRM: true }) 
+                // Also send window message as backup
+                window.postMessage({ type: 'LiGo_AddProspectToSidebar', profileData: request.payload.profileData }, '*')
+              } catch (e) { console.error('Failed to send addProspectToSidebar:', e) }
+            }, 100)
+          } else {
+            console.log('❌ No profileData in payload:', request.payload)
+          }
+        } else if (intent === 'inspirations') {
+          setActiveTab('inspirations')
+        } else if (intent === 'analytics') {
+          setActiveTab('analytics')
+        }
+        try {
+          chrome.runtime.sendMessage({ action: 'PANEL_DELIVER_ACK', requestId: request.requestId })
+        } catch (e) {}
+        return
+      }
       if (request.action === 'pasteToTextarea') {
         // Switch to comments tab when content is pasted
         setActiveTab('comments')
@@ -89,6 +154,22 @@ const SidebarLayout = ({ children }) => {
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage)
     }
+  }, [])
+
+  // Rehydrate per-tab state on mount
+  useEffect(() => {
+    try {
+      chrome.runtime.sendMessage({ action: 'REQUEST_PANEL_STATE' }, (resp) => {
+        if (!resp || !resp.success || !resp.state) return
+        const { intent } = resp.state
+        if (intent === 'comments') setActiveTab('comments')
+        else if (intent === 'bulk-replies') setActiveTab('bulk-replies')
+        else if (intent === 'write') setActiveTab('write')
+        else if (intent === 'crm') setActiveTab('crm')
+        else if (intent === 'inspirations') setActiveTab('inspirations')
+        else if (intent === 'analytics') setActiveTab('analytics')
+      })
+    } catch (_) {}
   }, [])
 
   // Check for navigate to Write signal from content extraction

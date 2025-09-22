@@ -209,7 +209,8 @@ const AnalyticsPanel = ({ activeTab }) => {
   }
 
   const handleRefresh = () => {
-    loadConsolidatedAnalytics()
+    // Route to full analytics page on the web app (refresh is handled there)
+    chrome.tabs.create({ url: `${FRONTEND_URL}/linkedin-analytics` })
   }
 
   const handleUpgrade = () => {
@@ -228,9 +229,11 @@ const AnalyticsPanel = ({ activeTab }) => {
 
   // Helper function to format engagement metrics
   const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-    return num?.toString() || '0'
+    if (typeof num !== 'number') return '0'
+    // For small numbers, show rounded integer to avoid long decimals
+    if (num < 1000) return Math.round(num).toString()
+    if (num < 1000000) return (Math.round(num) / 1000).toFixed(1) + 'K'
+    return (Math.round(num) / 1000000).toFixed(1) + 'M'
   }
 
   // Get rank display with icons - Using design system colors
@@ -582,7 +585,7 @@ const AnalyticsPanel = ({ activeTab }) => {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{day.day}</span>
                         <span className="text-xs text-muted-foreground">
-                          {formatNumber(day.avg_engagement)} avg
+                          {Math.round(day.avg_engagement)} avg
                         </span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
@@ -613,7 +616,7 @@ const AnalyticsPanel = ({ activeTab }) => {
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">{timeSlot.time_slot}</span>
                         <span className="text-xs text-muted-foreground">
-                          {formatNumber(timeSlot.avg_engagement)} avg
+                          {Math.round(timeSlot.avg_engagement)} avg
                         </span>
                       </div>
                       <div className="w-full h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">

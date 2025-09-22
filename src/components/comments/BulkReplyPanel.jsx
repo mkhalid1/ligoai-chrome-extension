@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { MessageSquare, Users, CheckCircle, AlertCircle, Copy, ExternalLink } from 'lucide-react'
+import { MessageSquare, Users, CheckCircle, AlertCircle, Copy, ExternalLink, Edit3, Plus, X } from 'lucide-react'
+import ThreadEditModal from './ThreadEditModal'
 
 const BulkReplyPanel = ({ activeTab }) => {
   const [analysisData, setAnalysisData] = useState(null)
@@ -7,6 +8,13 @@ const BulkReplyPanel = ({ activeTab }) => {
   const [isGenerating, setIsGenerating] = useState(false)
   const [selectedThreadIds, setSelectedThreadIds] = useState(new Set())
   const [copiedIndex, setCopiedIndex] = useState(null)
+  
+  // Thread editing state
+  const [editedThreads, setEditedThreads] = useState({})
+  const [userAuthorName, setUserAuthorName] = useState('')
+  const [showThreadModal, setShowThreadModal] = useState(false)
+  const [modalThread, setModalThread] = useState(null)
+  const [isNewThread, setIsNewThread] = useState(false)
 
   useEffect(() => {
     // Listen for bulk reply analysis data
@@ -14,6 +22,10 @@ const BulkReplyPanel = ({ activeTab }) => {
       if (request.action === 'showBulkReplyAnalysis') {
         console.log('Received bulk reply analysis:', request.data)
         setAnalysisData(request.data)
+        // Extract user's name from post author
+        if (request.data.postAuthor?.name) {
+          setUserAuthorName(request.data.postAuthor.name)
+        }
         // Preselect threads needing replies
         const ids = new Set((request.data.commentThreads || []).map(t => t.threadId))
         setSelectedThreadIds(ids)
@@ -29,6 +41,10 @@ const BulkReplyPanel = ({ activeTab }) => {
     const handleWindowMessage = (event) => {
       if (event?.data?.type === 'LiGo_ShowBulkReplyAnalysis' && window.pendingBulkReplyAnalysis) {
         setAnalysisData(window.pendingBulkReplyAnalysis)
+        // Extract user's name from post author
+        if (window.pendingBulkReplyAnalysis.postAuthor?.name) {
+          setUserAuthorName(window.pendingBulkReplyAnalysis.postAuthor.name)
+        }
         const ids = new Set((window.pendingBulkReplyAnalysis.commentThreads || []).map(t => t.threadId))
         setSelectedThreadIds(ids)
       }
@@ -39,13 +55,14 @@ const BulkReplyPanel = ({ activeTab }) => {
 
   const handleGenerateReplies = async () => {
     if (!analysisData) return
-    const selected = (analysisData.commentThreads || []).filter(t => selectedThreadIds.has(t.threadId))
+    const allThreads = getAllThreads()
+    const selected = allThreads.filter(t => selectedThreadIds.has(t.threadId))
     if (selected.length === 0) return
 
     setIsGenerating(true)
 
     try {
-      // Send to background script for AI processing with only selected threads
+      // Send to background script for AI processing with edited threads
       chrome.runtime.sendMessage({
         action: 'generateBulkCommentReplies',
         data: { ...analysisData, commentThreads: selected }
@@ -85,6 +102,49 @@ const BulkReplyPanel = ({ activeTab }) => {
   const openLinkedInPost = () => {
     if (analysisData?.postUrl) {
       chrome.tabs.create({ url: analysisData.postUrl })
+    }
+  }
+
+  // Thread editing functions
+  const getAllThreads = () => {
+    if (!analysisData) return []
+    return analysisData.commentThreads.map(thread => 
+      editedThreads[thread.threadId] || thread
+    )
+  }
+
+  // Modal functions
+  const openEditModal = (thread) => {
+    setModalThread(thread)
+    setIsNewThread(false)
+    setShowThreadModal(true)
+  }
+
+  const openNewThreadModal = () => {
+    setModalThread(null)
+    setIsNewThread(true)
+    setShowThreadModal(true)
+  }
+
+  const closeModal = () => {
+    setShowThreadModal(false)
+    setModalThread(null)
+    setIsNewThread(false)
+  }
+
+  const handleSaveThread = async (savedThread) => {
+    if (isNewThread) {
+      // Add new thread
+      setEditedThreads(prev => ({ ...prev, [savedThread.threadId]: savedThread }))
+      setAnalysisData(prev => ({
+        ...prev,
+        commentThreads: [...prev.commentThreads, savedThread]
+      }))
+      // Auto-select the new thread
+      setSelectedThreadIds(prev => new Set([...prev, savedThread.threadId]))
+    } else {
+      // Update existing thread
+      setEditedThreads(prev => ({ ...prev, [savedThread.threadId]: savedThread }))
     }
   }
 
@@ -175,39 +235,76 @@ const BulkReplyPanel = ({ activeTab }) => {
         </div>
       </div>
 
-      {/* Needs Replies badge inline with section header below */}
-
-      {/* Threads Needing Replies */}
+      {/* Comment Threads */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="font-semibold text-gray-900">Threads Needing Replies</h3>
-          <span className="text-xs text-gray-500">{analysisData.needsReply || 0} selected by default</span>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900">Comment Threads</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">{analysisData.needsReply || 0} need replies</span>
+            <button
+              onClick={openNewThreadModal}
+              className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+            >
+              <Plus className="w-3 h-3" /> Add Thread
+            </button>
+          </div>
         </div>
+
         <div className="space-y-3">
-          {(analysisData.commentThreads || []).map((thread, index) => {
+          {getAllThreads().map((thread, index) => {
+            const isEdited = editedThreads[thread.threadId]
             const lastMsg = thread.messages?.[thread.messages.length - 1]
+            
             return (
-              <div key={thread.threadId || index} className="border border-gray-200 rounded-lg p-3">
+              <div key={thread.threadId || index} className={`border rounded-lg p-3 ${isEdited ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs text-gray-500">Thread {index + 1}</div>
-                  <label className="flex items-center gap-2 text-xs text-gray-700">
-                    <input type="checkbox" className="rounded" checked={selectedThreadIds.has(thread.threadId)} onChange={() => toggleThreadSelection(thread.threadId)} /> Select
-                  </label>
-                </div>
-                {thread.messages?.map((message, msgIndex) => (
-                  <div key={msgIndex} className="flex items-start gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm text-gray-900">{message.authorName}</span>
-                        {message.isFromPostAuthor && (
-                          <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">You</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-700">{message.commentText}</p>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${message.isFromPostAuthor ? 'bg-green-400' : 'bg-orange-400'}`} />
+                  <div className="flex items-center gap-2">
+                    <div className="text-xs text-gray-500">Thread {index + 1}</div>
+                    {isEdited && <span className="px-1 py-0.5 text-xs bg-blue-200 text-blue-800 rounded">Edited</span>}
                   </div>
-                ))}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEditModal(thread)}
+                      className="p-1 text-gray-500 hover:text-gray-700"
+                      title="Edit thread"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <label className="flex items-center gap-2 text-xs text-gray-700">
+                      <input 
+                        type="checkbox" 
+                        className="rounded" 
+                        checked={selectedThreadIds.has(thread.threadId)} 
+                        onChange={() => toggleThreadSelection(thread.threadId)} 
+                      /> 
+                      Select
+                    </label>
+                  </div>
+                </div>
+                
+                {/* Thread Preview */}
+                <div className="space-y-2">
+                  {thread.messages?.slice(0, 3).map((message, msgIndex) => (
+                    <div key={msgIndex} className="flex items-start gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm text-gray-900">{message.authorName}</span>
+                          {message.isFromPostAuthor && (
+                            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">You</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 line-clamp-2">{message.commentText}</p>
+                      </div>
+                      <div className={`w-3 h-3 rounded-full ${message.isFromPostAuthor ? 'bg-green-400' : 'bg-orange-400'}`} />
+                    </div>
+                  ))}
+                  {thread.messages?.length > 3 && (
+                    <div className="text-xs text-gray-500 pl-3">
+                      +{thread.messages.length - 3} more messages...
+                    </div>
+                  )}
+                </div>
+                
                 {lastMsg && (
                   <div className="mt-2 text-xs text-gray-500">Last commenter: {lastMsg.authorName}</div>
                 )}
@@ -217,7 +314,7 @@ const BulkReplyPanel = ({ activeTab }) => {
         </div>
       </div>
 
-      {/* Primary CTA - make it prominent and singular */}
+      {/* Primary CTA */}
       {analysisData.needsReply > 0 && (
         <div className="sticky bottom-0 bg-white pt-4 border-t">
           <div className="flex items-center justify-end">
@@ -244,6 +341,16 @@ const BulkReplyPanel = ({ activeTab }) => {
           </p>
         </div>
       )}
+
+      {/* Thread Edit Modal */}
+      <ThreadEditModal
+        isOpen={showThreadModal}
+        onClose={closeModal}
+        thread={modalThread}
+        onSave={handleSaveThread}
+        userAuthorName={userAuthorName}
+        isNewThread={isNewThread}
+      />
     </div>
   )
 }

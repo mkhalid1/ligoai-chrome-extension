@@ -127,16 +127,38 @@ const CRMPanel = ({ activeTab }) => {
   // Listen for incoming prospect data messages
   useEffect(() => {
     const handleMessage = (request) => {
+      console.log('🏢 CRM Panel received message:', request)
       if (request.action === 'addProspectToSidebar' && request.profileData) {
+        console.log('📋 Opening add prospect form with data:', request.profileData)
         // Set the incoming data and show the add form
         setIncomingProspectData(request.profileData)
         setShowAddProspectForm(true)
       }
     }
 
+    const handleWindowMessage = (event) => {
+      console.log('🏢 CRM Panel received window message:', event.data)
+      if (event?.data?.type === 'LiGo_AddProspectToSidebar' && event.data.profileData) {
+        console.log('📋 Opening add prospect form from window message:', event.data.profileData)
+        setIncomingProspectData(event.data.profileData)
+        setShowAddProspectForm(true)
+      }
+    }
+
+    // Check for pending prospect data on mount
+    if (window.pendingProspectData) {
+      console.log('📋 Found pending prospect data on mount:', window.pendingProspectData)
+      setIncomingProspectData(window.pendingProspectData)
+      setShowAddProspectForm(true)
+      window.pendingProspectData = null // Clear after use
+    }
+
     chrome.runtime.onMessage.addListener(handleMessage)
+    window.addEventListener('message', handleWindowMessage)
+    
     return () => {
       chrome.runtime.onMessage.removeListener(handleMessage)
+      window.removeEventListener('message', handleWindowMessage)
     }
   }, [])
 

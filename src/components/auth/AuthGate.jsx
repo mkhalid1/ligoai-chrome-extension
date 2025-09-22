@@ -74,7 +74,7 @@ const AuthGate = ({ children }) => {
   }
 
   const handleSignUpRedirect = () => {
-    chrome.tabs.create({ url: 'https://ligo.ertiqah.com/auth' })
+    chrome.tabs.create({ url: 'https://ligo.ertiqah.com/auth?action=signup' })
   }
 
   const handleContactSupport = () => {

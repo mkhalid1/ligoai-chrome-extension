@@ -172,20 +172,15 @@ async function handleSaveToLiGo() {
       return
     }
 
-    // Store the profile data to send to sidebar
-    window.pendingProspectData = {
-      profileData: profileData,
-      action: 'saveToLiGo'
-    }
-
-    // Open sidebar and navigate to CRM tab - AuthGate will handle authentication
+    // Open panel via handshake with CRM intent and deliver profile data
     showNotification('Opening LiGo CRM...', 'success')
-    chrome.runtime.sendMessage({ action: 'openSidePanel' })
-    
-    // Send profile data to sidebar after sidebar is ready
-    setTimeout(() => {
-      sendProspectDataToSidebar(profileData)
-    }, 2000)
+    const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+    chrome.runtime.sendMessage({
+      type: 'OPEN_PANEL',
+      intent: 'crm',
+      requestId,
+      payload: { profileData }
+    })
 
   } catch (error) {
     console.error('Error saving to LiGo:', error)
@@ -394,6 +389,44 @@ async function copyToClipboard(text) {
 // Debounce mechanism to prevent multiple rapid calls
 let isProcessingGenerateComments = false
 
+// Find the post most likely to have been right-clicked (closest to viewport center)
+function findMostLikelyClickedPost(postElements) {
+  const viewportCenterY = window.innerHeight / 2
+  let bestPost = null
+  let bestScore = -1
+  
+  for (const post of postElements) {
+    const rect = post.getBoundingClientRect()
+    
+    // Skip posts that are completely out of view
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+      continue
+    }
+    
+    // Calculate how much of the post is visible
+    const visibleTop = Math.max(rect.top, 0)
+    const visibleBottom = Math.min(rect.bottom, window.innerHeight)
+    const visibleHeight = visibleBottom - visibleTop
+    const visibilityRatio = visibleHeight / rect.height
+    
+    // Calculate distance from viewport center
+    const postCenterY = rect.top + rect.height / 2
+    const distanceFromCenter = Math.abs(postCenterY - viewportCenterY)
+    const maxDistance = window.innerHeight / 2
+    const centerScore = 1 - (distanceFromCenter / maxDistance)
+    
+    // Combine visibility and center proximity (weighted towards visibility)
+    const score = (visibilityRatio * 0.7) + (centerScore * 0.3)
+    
+    if (score > bestScore) {
+      bestScore = score
+      bestPost = post
+    }
+  }
+  
+  return bestPost
+}
+
 // Handle right-click context menu for comment generation
 function handleGenerateComments(selectedText = null) {
   // Prevent multiple rapid calls
@@ -412,27 +445,42 @@ function handleGenerateComments(selectedText = null) {
   let postContent = selectedText
   
   if (!postContent) {
-    // Try to find post content from LinkedIn feed - use better post detection
+    // Try to find post content from LinkedIn feed - use smart post detection
     const postElements = document.querySelectorAll('div.fie-impression-container, div[data-id^="urn:li:activity:"], .feed-shared-update-v2')
     
+    // First try: Look for posts that are clearly visible in viewport
     for (const postElement of postElements) {
-      // Check if this post is visible in the viewport (likely the one right-clicked)
       const rect = postElement.getBoundingClientRect()
-      if (rect.top >= 0 && rect.top <= window.innerHeight) {
+      // Post is clearly visible if it's mostly in viewport
+      if (rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 100) {
         const extractedText = extractPostText(postElement)
         if (extractedText) {
           postContent = extractedText
+          console.log('📝 Found clearly visible post for comment generation')
           break
         }
       }
     }
     
-    // If no post found in viewport, try any post on the page
+    // Smart fallback: Find the most likely clicked post
+    if (!postContent) {
+      const likelyPost = findMostLikelyClickedPost(postElements)
+      if (likelyPost) {
+        const extractedText = extractPostText(likelyPost)
+        if (extractedText) {
+          postContent = extractedText
+          console.log('🎯 Using smart fallback - found most likely clicked post')
+        }
+      }
+    }
+    
+    // Final fallback: Try any post with content (original behavior)
     if (!postContent) {
       for (const postElement of postElements) {
         const extractedText = extractPostText(postElement)
         if (extractedText) {
           postContent = extractedText
+          console.log('⚠️ Using final fallback - first post with content')
           break
         }
       }
@@ -445,19 +493,14 @@ function handleGenerateComments(selectedText = null) {
   }
 
   try {
-    // Store the content to send later
-    window.pendingContentToSend = {
-      text: postContent,
-      shouldGenerateComments: true
-    }
-    
-    // Open sidebar first
-    chrome.runtime.sendMessage({ action: 'openSidePanel' })
-    
-    // Send content after sidebar is ready (reduced to single fallback)
-    setTimeout(() => {
-      sendContentToSidebar(postContent, true)
-    }, 2000)
+    // New handshake: open panel for this tab with intent and payload
+    const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+    chrome.runtime.sendMessage({
+      type: 'OPEN_PANEL',
+      intent: 'comments',
+      requestId,
+      payload: { text: postContent, shouldGenerateComments: true }
+    })
     
     showNotification('Opening sidebar and generating comments...', 'success')
   } catch (error) {
@@ -472,7 +515,10 @@ function extractPostData(postElement) {
     content: '',
     author_name: '',
     author_profile: '',
+    author_image: '',
+    author_headline: '',
     original_url: '',
+    post_url: '',
     engagement_stats: {}
   }
 
@@ -550,9 +596,42 @@ function extractPostData(postElement) {
   }
 
   // Extract author profile URL
-  const authorLink = postElement.querySelector('.update-components-actor a[href*="/in/"], .feed-shared-actor a[href*="/in/"]')
-  if (authorLink) {
-    postData.author_profile = authorLink.href
+  const authorLinkSelectors = [
+    '.update-components-actor__meta-link[href*="/in/"]',
+    '.update-components-actor a[href*="/in/"]',
+    '.feed-shared-actor a[href*="/in/"]',
+    '.update-components-actor__image[href*="/in/"]',
+    'a[href*="/in/"][data-test-app-aware-link]'
+  ]
+
+  for (const selector of authorLinkSelectors) {
+    const authorLink = postElement.querySelector(selector)
+    if (authorLink && authorLink.href) {
+      postData.author_profile = authorLink.href
+      console.log('🔗 Extracted author profile URL:', postData.author_profile, 'using selector:', selector)
+      break
+    }
+  }
+  
+  if (!postData.author_profile) {
+    console.log('❌ No author profile URL found. Available links in post:', 
+      Array.from(postElement.querySelectorAll('a[href]')).map(a => ({ href: a.href, classes: a.className })))
+  }
+
+  // Extract author profile image
+  const authorImageSelectors = [
+    '.update-components-actor__avatar img',
+    '.feed-shared-actor__avatar img',
+    '.update-components-actor .presence-entity__image',
+    '.feed-shared-actor .presence-entity__image'
+  ]
+
+  for (const selector of authorImageSelectors) {
+    const imageElement = postElement.querySelector(selector)
+    if (imageElement) {
+      postData.author_image = imageElement.src || imageElement.getAttribute('src')
+      if (postData.author_image) break
+    }
   }
 
   // Extract engagement stats
@@ -576,6 +655,11 @@ function extractPostData(postElement) {
   } else {
     postData.original_url = window.location.href
   }
+  
+  // Use post URL as original URL if available (more specific)
+  if (postData.post_url) {
+    postData.original_url = postData.post_url
+  }
 
   return postData
 }
@@ -594,27 +678,42 @@ function handleAddToInspirations(selectedText = null) {
       engagement_stats: {}
     }
   } else {
-    // Try to find and extract comprehensive post data
+    // Try to find and extract comprehensive post data using smart detection
     const postElements = document.querySelectorAll('div.fie-impression-container, div[data-id^="urn:li:activity:"], .feed-shared-update-v2')
     
+    // First try: Look for posts that are clearly visible in viewport
     for (const postElement of postElements) {
-      // Check if this post is visible in the viewport (likely the one right-clicked)
       const rect = postElement.getBoundingClientRect()
-      if (rect.top >= 0 && rect.top <= window.innerHeight) {
+      // Post is clearly visible if it's mostly in viewport
+      if (rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 100) {
         const extractedData = extractPostData(postElement)
         if (extractedData.content) {
           postData = extractedData
+          console.log('📝 Found clearly visible post for inspiration')
           break
         }
       }
     }
     
-    // If no post found in viewport, try any post on the page
+    // Smart fallback: Find the most likely clicked post
+    if (!postData) {
+      const likelyPost = findMostLikelyClickedPost(postElements)
+      if (likelyPost) {
+        const extractedData = extractPostData(likelyPost)
+        if (extractedData.content) {
+          postData = extractedData
+          console.log('🎯 Using smart fallback for inspiration - found most likely clicked post')
+        }
+      }
+    }
+    
+    // Final fallback: Try any post with content (original behavior)
     if (!postData) {
       for (const postElement of postElements) {
         const extractedData = extractPostData(postElement)
         if (extractedData.content) {
           postData = extractedData
+          console.log('⚠️ Using final fallback for inspiration - first post with content')
           break
         }
       }
@@ -649,6 +748,107 @@ function handleAddToInspirations(selectedText = null) {
   }
 }
 
+// Handle "Save to CRM" context menu action
+function handleSaveToCRM(selectedText = null) {
+  let postData = null
+  
+  if (selectedText) {
+    // If text is selected, create minimal post data
+    postData = {
+      content: selectedText,
+      author_name: 'Unknown Author',
+      author_profile: '',
+      author_image: '',
+      author_headline: '',
+      original_url: window.location.href,
+      post_url: '',
+      engagement_stats: {}
+    }
+  } else {
+    // Try to find and extract comprehensive post data using smart detection
+    const postElements = document.querySelectorAll('div.fie-impression-container, div[data-id^="urn:li:activity:"], .feed-shared-update-v2')
+    
+    // First try: Look for posts that are clearly visible in viewport
+    for (const postElement of postElements) {
+      const rect = postElement.getBoundingClientRect()
+      // Post is clearly visible if it's mostly in viewport
+      if (rect.top >= 0 && rect.bottom <= window.innerHeight && rect.height > 100) {
+        const extractedData = extractPostData(postElement)
+        if (extractedData.content && extractedData.author_name) {
+          postData = extractedData
+          console.log('💼 Found clearly visible post for CRM')
+          break
+        }
+      }
+    }
+    
+    // Smart fallback: Find the most likely clicked post
+    if (!postData) {
+      const likelyPost = findMostLikelyClickedPost(postElements)
+      if (likelyPost) {
+        const extractedData = extractPostData(likelyPost)
+        if (extractedData.content && extractedData.author_name) {
+          postData = extractedData
+          console.log('🎯 Using smart fallback for CRM - found most likely clicked post')
+        }
+      }
+    }
+    
+    // Final fallback: Try any post with content and author (original behavior)
+    if (!postData) {
+      for (const postElement of postElements) {
+        const extractedData = extractPostData(postElement)
+        if (extractedData.content && extractedData.author_name) {
+          postData = extractedData
+          console.log('⚠️ Using final fallback for CRM - first post with content and author')
+          break
+        }
+      }
+    }
+  }
+
+  if (!postData || !postData.author_name) {
+    showNotification('No post author found. Please right-click on a LinkedIn post with author information.', 'error')
+    return
+  }
+
+  // Open sidepanel and switch to CRM tab with author data
+  console.log('📝 Extracted post data for CRM:', {
+    author_name: postData.author_name,
+    author_profile: postData.author_profile,
+    author_image: postData.author_image,
+    author_headline: postData.author_headline,
+    post_url: postData.post_url
+  })
+  
+  try {
+    chrome.runtime.sendMessage({
+      type: 'OPEN_PANEL',
+      intent: 'crm',
+      payload: {
+        profileData: {
+          name: postData.author_name,
+          profileLink: postData.author_profile,
+          profileImage: postData.author_image,
+          title: postData.author_headline,
+          postUrl: postData.post_url,
+          source: 'feed_post',
+          notes: postData.content ? `Post content: "${postData.content.substring(0, 200)}${postData.content.length > 200 ? '...' : ''}"` : ''
+        }
+      }
+    }, (response) => {
+      if (response && response.success) {
+        showNotification(`💼 ${postData.author_name} added to CRM! Opening sidepanel...`, 'success')
+      } else {
+        showNotification('Failed to open CRM. Please try again.', 'error')
+      }
+    })
+  } catch (error) {
+    console.error('Error opening CRM with prospect data:', error)
+    showNotification('Failed to open CRM. Please try again.', 'error')
+  }
+}
+
 // Helper function to send content to sidebar
 function sendContentToSidebar(text, shouldGenerate = false) {
   try {
@@ -661,6 +861,8 @@ function sendContentToSidebar(text, shouldGenerate = false) {
     console.log('Failed to send to sidebar:', error)
   }
 }
+
+// (Removed old dedup scheduling; handshake ensures single delivery)
 
 // Handle bulk reply generation for post comments
 async function handleGenerateBulkReplies() {
@@ -684,14 +886,14 @@ async function handleGenerateBulkReplies() {
     // Always show analysis results in sidebar
     console.log('Analysis Result:', analysisResult)
 
-    // Open sidebar first, then send analysis when ready (and also via fallback timeouts)
-    window.pendingBulkReplyAnalysis = analysisResult
-    chrome.runtime.sendMessage({ action: 'openSidePanel' })
-
-    // Send analysis after sidebar is ready
-    setTimeout(() => {
-      chrome.runtime.sendMessage({ action: 'showBulkReplyAnalysis', data: analysisResult })
-    }, 2000)
+    // Handshake: open panel with intent and deliver analysis payload
+    const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+    chrome.runtime.sendMessage({
+      type: 'OPEN_PANEL',
+      intent: 'bulk-replies',
+      requestId,
+      payload: { data: analysisResult }
+    })
 
     if (analysisResult.needsReply === 0) {
       showNotification(`✅ Analysis complete! Found ${analysisResult.totalCommentsFound || 0} total comments. All have been replied to. Check sidebar for details.`, 'success')
@@ -884,28 +1086,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     handleGenerateComments(request.selectionText)
   } else if (request.action === 'addToInspirations') {
     handleAddToInspirations(request.selectionText)
+  } else if (request.action === 'saveToCRM') {
+    handleSaveToCRM(request.selectionText)
   } else if (request.action === 'generateBulkReplies') {
     handleGenerateBulkReplies()
   } else if (request.action === 'contentScriptMissing') {
     // Re-initialize if content script is missing
     initLiGo()
-  } else if (request.action === 'sidebarReady') {
-    // Sidebar is ready, send pending content if any
-    if (window.pendingContentToSend) {
-      sendContentToSidebar(
-        window.pendingContentToSend.text, 
-        window.pendingContentToSend.shouldGenerateComments
-      )
-      // Clear the pending content
-      window.pendingContentToSend = null
-    }
-    
-    // Send pending prospect data if any
-    if (window.pendingProspectData) {
-      sendProspectDataToSidebar(window.pendingProspectData.profileData)
-      // Clear the pending prospect data
-      window.pendingProspectData = null
-    }
   }
   
   sendResponse({ success: true })

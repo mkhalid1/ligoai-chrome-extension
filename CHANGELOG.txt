@@ -1,0 +1,75 @@
+LiGo Chrome Extension - What's New! 🎉
+
+### ✨ **New Features You'll Love**
+
+#### **💼 Save LinkedIn Authors to Your CRM - Now Just One Click Away!**
+When browsing LinkedIn posts, you can now right-click and select "💼 Save to CRM" to instantly add the post author to your prospect list. We'll automatically grab their name, profile photo, and LinkedIn URL - plus add the post content as a note so you remember the context!
+
+*Perfect for: Quickly building your prospect database while scrolling through your LinkedIn feed*
+
+---
+
+### 🎨 **UI/UX Improvements**
+
+#### **📝 Better Thread Editing for Bulk Replies**
+We completely redesigned how you edit conversation threads! Instead of cramped inline editing, you now get a spacious popup window where you can:
+- ✅ Add or remove messages easily
+- ✅ Drag and drop to reorder conversations  
+- ✅ See a clear preview of your edited thread
+- ✅ More space to work = less frustration!
+
+*Why this matters: Editing complex conversations is now much easier and less error-prone*
+
+---
+
+### 🔧 **Bug Fixes**
+
+#### **🚫 Fixed: "Save to LiGo" Button Wasn't Working**
+**The Problem:** Many users reported the "Save to LiGo" option disappeared or didn't work when right-clicking on LinkedIn profiles.
+
+**The Fix:** We identified and fixed the technical issue preventing the context menu from loading properly. Now it works reliably every time!
+
+#### **🧩 Fixed: Bulk Replies Missing Parts of Conversations**
+**The Problem:** When generating bulk replies, some comments were being skipped or conversations appeared incomplete.
+
+**The Fix:** We improved how we detect and organize conversation threads, so you'll now see the complete discussion before generating your replies.
+
+#### **⚡ Fixed: CRM Modal Sometimes Wouldn't Open**
+**The Problem:** Occasionally, clicking to add someone to your CRM wouldn't open the form.
+
+**The Fix:** We added multiple backup systems to ensure the CRM form always appears when you need it.
+
+#### **✏️ Fixed: Typing Issues in Write Panel**
+**The Problem:** Users couldn't properly type, edit, or delete text in the Write tab after initial content was loaded. The cursor would jump or text wouldn't update properly.
+
+**The Fix:** We resolved a React state management issue that was interfering with text input. Now you can type, edit, and delete content smoothly without any interruptions!
+
+---
+
+### 📱 **Updated Right-Click Menu**
+
+Your right-click options now depend on where you are and what you're viewing:
+
+**On Other People's Posts:**
+- 💬 Generate Comments
+- ✨ Add to Inspirations  
+- 💼 Save to CRM *(NEW!)*
+
+**On LinkedIn Profiles:**
+- 💼 Save to LiGo
+
+**On Your Own Posts:**
+- 🔄 Generate Bulk Replies
+
+---
+
+### 🎯 **Why These Changes Matter**
+
+1. **Faster Prospecting**: Build your CRM database while browsing - no more manual copy/pasting
+2. **Better User Experience**: Cleaner, more intuitive interfaces that just work
+3. **More Reliable**: Fixed the annoying bugs that were interrupting your workflow
+4. **Smarter Detection**: Better at understanding which posts and profiles you're interested in
+
+---
+
+**💡 Pro Tip**: Try the new "Save to CRM" feature on your next LinkedIn browsing session - it's a game changer for building your prospect list!

@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7zsxL2UWRi+yo03mQOlJ0xwVmLs6A1kMFgCl0OLYH+8QthmYc+FnsrFmvSmrYE39E6xDjNC1xiL/71wA9wFggAEGzdo49idZGV2gBib+19fUru3pltJkWyonsrrQCG5lZw1nVLguokNufJiNvV8h+fgUV8TE8urMCl39StMjj0nbZlwdw5FzqelRBekFiLIA2IXklp0t/QEtfrfwKsluQcrYspBvWhcxdYCFmKv0UERlHg10+idgINDf6mSro/J94hlzBHIYq60KZI9uDrHYNkKKBHa+ySKUS3AizMJDaS154gESeHFv+w6Uirpt4u9BOyPuejvw3YFcPjwgIIpJ0QIDAQAB",
   "name": "LiGoAI",
-  "version": "2.0.6",
-  "description": "Engage on LinkedIn and X with personalized comments and replies",
+  "version": "2.0.8",
+  "description": "Engage on social media with personalized comments and replies",
   "permissions": ["storage", "sidePanel", "clipboardWrite", "activeTab", "scripting", "contextMenus"],
   "action": {
     "default_title": "LiGo - Open Sidepanel"
@@ -35,6 +35,13 @@
     "service_worker": "background.ts",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://*.linkedin.com/*"],
+      "js": ["contents/linkedin.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "icons": {
     "16": "assets/48x48.png",
     "32": "assets/48x48.png", 

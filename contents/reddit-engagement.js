@@ -223,20 +223,15 @@ class RedditEngagement {
             return
           }
 
-          // Open sidebar and send content - let AuthGate handle authentication
+          // Open panel via handshake and deliver content once ready
           try {
-            chrome.runtime.sendMessage({ action: 'openSidePanel' })
-            
-            // Send content to sidebar after a delay to ensure sidebar is ready
-            setTimeout(() => {
-              if (chrome.runtime?.id) {
-                chrome.runtime.sendMessage({
-                  action: 'pasteToTextarea',
-                  text: postContent,
-                  shouldGenerateComments: shouldAutoGenerate
-                })
-              }
-            }, 1000)
+            const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+            chrome.runtime.sendMessage({
+              type: 'OPEN_PANEL',
+              intent: 'comments',
+              requestId,
+              payload: { text: postContent, shouldGenerateComments: shouldAutoGenerate }
+            })
           } catch (error) {
             console.error('Failed to send message to extension:', error)
             utils.showNotification('Extension connection lost, please refresh the page', 'error')

@@ -430,17 +430,14 @@ class LiGoContentExtractor {
       const extractedData = await this.extractContent()
       
       if (extractedData) {
-        // Open sidebar and send content for comment generation (not post generation)
-        chrome.runtime.sendMessage({ action: 'openSidePanel' })
-        
-        // Send content to sidebar after a delay to ensure it's ready
-        setTimeout(() => {
-          chrome.runtime.sendMessage({
-            action: 'pasteToTextarea',
-            text: extractedData.content,
-            shouldGenerateComments: true // Auto-generate comments
-          })
-        }, 1000)
+        // Open panel via handshake and deliver content once ready
+        const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+        chrome.runtime.sendMessage({
+          type: 'OPEN_PANEL',
+          intent: 'comments',
+          requestId,
+          payload: { text: extractedData.content, shouldGenerateComments: true }
+        })
         
         console.log('Reddit content sent for comment generation')
       } else {
@@ -465,7 +462,14 @@ class LiGoContentExtractor {
       const extractedData = await this.extractContent()
       
       if (extractedData) {
-        await this.sendToWritePanel(extractedData)
+        // Open panel via handshake and deliver extracted data to Write
+        const requestId = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+        chrome.runtime.sendMessage({
+          type: 'OPEN_PANEL',
+          intent: 'write',
+          requestId,
+          payload: { extractedData }
+        })
         this.setFABState('success')
         
         // Keep FAB visible but change it to a "open LiGo" button
@@ -783,54 +787,8 @@ class LiGoContentExtractor {
   }
 
   async sendToWritePanel(extractedData: any) {
-    // First, send the extracted data to background script for storage
-    return new Promise((resolve, reject) => {
-      try {
-        chrome.runtime.sendMessage({
-          type: 'CONTENT_EXTRACTED',
-          data: extractedData,
-          source: 'content-extraction',
-          navigateToWrite: true, // Flag to navigate to Write tab when sidebar opens
-          navigateToVideo: extractedData.isVideo // Flag to navigate to Video category if it's a video
-        }, async (response) => {
-          if (chrome.runtime.lastError) {
-            console.error('Runtime error:', chrome.runtime.lastError.message)
-            reject(new Error(chrome.runtime.lastError.message))
-          } else if (response?.success) {
-            console.log('Content sent successfully:', response)
-            
-            // Now open the sidebar from here (where we have user gesture)
-            try {
-              console.log('🚀 Opening sidebar from content script with user gesture')
-              
-              // Send separate message to open sidebar - this preserves the user gesture context
-              chrome.runtime.sendMessage({
-                type: 'OPEN_SIDE_PANEL'
-              }, (sidebarResponse) => {
-                if (chrome.runtime.lastError) {
-                  console.error('Error opening sidebar:', chrome.runtime.lastError.message)
-                  // Still resolve since content was extracted successfully
-                  resolve(response)
-                } else {
-                  console.log('✅ Sidebar opened successfully:', sidebarResponse)
-                  resolve(response)
-                }
-              })
-            } catch (sidebarError) {
-              console.error('Error requesting sidebar open:', sidebarError)
-              // Still resolve since content was extracted successfully
-              resolve(response)
-            }
-          } else {
-            console.error('Background script error:', response?.error)
-            reject(new Error(response?.error || 'Failed to send content to Write panel'))
-          }
-        })
-      } catch (error) {
-        console.error('Failed to send message:', error)
-        reject(error)
-      }
-    })
+    // Deprecated in favor of OPEN_PANEL handshake
+    return Promise.resolve(true)
   }
 
   loadPosition() {
@@ -872,7 +830,9 @@ class LiGoContentExtractor {
     
     // Prevent text selection and other default behaviors
     document.body.style.userSelect = 'none'
-    e.preventDefault?.()
+    if ('preventDefault' in e && typeof (e as MouseEvent).preventDefault === 'function') {
+      (e as MouseEvent).preventDefault()
+    }
   }
   
   handleDragMove(e: MouseEvent | Touch) {

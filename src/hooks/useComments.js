@@ -7,7 +7,7 @@ export const useComments = () => {
   const [comments, setComments] = useState([])
   const [error, setError] = useState(null)
 
-  const generateComments = useCallback(async (postContent, style = null) => {
+  const generateComments = useCallback(async (postContent, style = null, useBetaGeneration = false) => {
     if (!postContent?.trim()) {
       setError('Please paste a LinkedIn post first.')
       return
@@ -34,7 +34,8 @@ export const useComments = () => {
           postContent: postContent.trim(),
           style: style,
           apiVersion: '2',
-          token: currentToken
+          token: currentToken,
+          useBetaGeneration: useBetaGeneration
         })
       })
 
